@@ -12,8 +12,9 @@ LDAP_USERS_REQUEST="dc=gfi,dc=fr objectClass=inetOrgPerson"
 LDAP_GROUPS_REQUEST="dc=gfi,dc=fr objectClass=groupOfUniqueNames"
 
 GITLAB_API_URL="http://127.0.0.1/api/v4"
-GITLAB_ADMIN_PRIVATE_TOKEN="DPECPTTDQTTE1tX4xvdv"
+GITLAB_ADMIN_PRIVATE_TOKEN="ecMxoj8WMq8CosvcN7w_"
 
+declare -A _gitlabUsersId=()
 _gitlabGroupId=""
 
 # Searches for gitlab group. If it does not exist, it creates it.
@@ -44,9 +45,11 @@ processUser() {
   if [[ "[]" == "$response" ]]; then
     # Creating Gitlab user
     echo "-> Creating Gitlab user username : $uid, e-mail : $mail, name : $name"
-    echo $(curl -s --header "PRIVATE-TOKEN: $GITLAB_ADMIN_PRIVATE_TOKEN" --data "username=$uid&email=$mail&name=$name&reset_password=true" -XPOST "$GITLAB_API_URL/users")
+    response=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_ADMIN_PRIVATE_TOKEN" --data "username=$uid&email=$mail&name=$name&reset_password=true" -XPOST "$GITLAB_API_URL/users")
+    echo $response
   fi
 
+  _gitlabUsersId[$uid]=$(echo $response | sed 's/\(.*\"id\":\)\([0-9]*\)\(,.*\)/\2/')
 }
 
 echo "Process start time : $(date)"
@@ -61,7 +64,8 @@ uid=""
 name=""
 mail=""
 
-ldapsearch -xLLL -H $LDAP_URL -b $LDAP_USERS_REQUEST uid cn mail |
+ldapsearch -xLLL -H $LDAP_URL -b $LDAP_USERS_REQUEST uid cn mail > ldap_users.txt
+
 while IFS= read -r line;
 do
 
@@ -84,7 +88,9 @@ do
     mail=""
   fi
 
-done
+done < ldap_users.txt
+
+rm ldap_users.txt
 
 # Sync LDAP groups and members into Gitlab
 # ----------------------------------------
@@ -109,7 +115,7 @@ do
 
     if [[ "$memberUid" != "none" ]]; then
 
-      gitlabUserId=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_ADMIN_PRIVATE_TOKEN" -XGET "$GITLAB_API_URL/users?username=$memberUid" | sed 's/\(.*\"id\":\)\([0-9]*\)\(,.*\)/\2/')
+      gitlabUserId=${_gitlabUsersId[$memberUid]}
 
       if [[ "$gitlabUserId" == "[]" ]]; then
         echo "-> ERROR : user $memberUid was not created previously in Gitlab"
