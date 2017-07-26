@@ -12,7 +12,7 @@ LDAP_USERS_REQUEST="dc=gfi,dc=fr objectClass=inetOrgPerson"
 LDAP_GROUPS_REQUEST="dc=gfi,dc=fr objectClass=groupOfUniqueNames"
 
 GITLAB_API_URL="http://127.0.0.1/api/v4"
-GITLAB_ADMIN_PRIVATE_TOKEN="fQH7coWrbeuJGMKYkPgz"
+GITLAB_ADMIN_PRIVATE_TOKEN="DPECPTTDQTTE1tX4xvdv"
 
 _gitlabGroupId=""
 
@@ -20,7 +20,7 @@ _gitlabGroupId=""
 processGroup() {
   local group=$1
 
-  local response=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_ADMIN_PRIVATE_TOKEN" -XGET "$GITLAB_API_URL/groups?search=$group")
+  local response=$(curl -s --header "PRIVATE-TOKEN: $GITLAB_ADMIN_PRIVATE_TOKEN" --data "search=$group" -XGET "$GITLAB_API_URL/groups")
 
   if [[ "[]" == "$response" ]]; then
     # Creating Gitlab group
@@ -48,6 +48,8 @@ processUser() {
   fi
 
 }
+
+echo "Process start time : $(date)"
 
 # Sync LDAP users into Gitlab
 # ---------------------------
@@ -121,3 +123,5 @@ do
   fi
 
 done
+
+echo "Process end time : $(date)"
